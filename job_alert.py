@@ -3,11 +3,11 @@ from bs4 import BeautifulSoup
 import os
 import re
 
-# ===== ENV VARIABLES =====
+# ========= ENV =========
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
-# ===== LINKEDIN SEARCH (LAST 10 MINUTES) =====
+# ========= SEARCH (LAST 10 MINUTES) =========
 URLS = [
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r600",
     "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r600"
@@ -18,69 +18,80 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9"
 }
 
-# ===== HELPERS =====
+# ========= HELPERS =========
 def send_telegram(message: str):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": str(CHAT_ID),
-        "text": message[:3900],  # Telegram safety limit
+        "text": message[:3900],
         "disable_web_page_preview": True
     }
-    response = requests.post(url, json=payload)
-    print("Telegram:", response.status_code)
+    r = requests.post(url, json=payload)
+    print("Telegram:", r.status_code)
 
 
-def clean_text(text: str) -> str:
-    """Remove asterisks and extra whitespace"""
+def clean(text):
     if not text:
         return ""
-    return (
-        text.replace("*", "")
-            .replace("\n", " ")
-            .strip()
-    )
+    return text.replace("*", "").replace("\n", " ").strip()
 
 
-def extract_minutes(posted_text: str):
-    """Extract minutes from 'X minutes ago'"""
-    match = re.search(r"(\d+)\s+minute", posted_text.lower())
+def get_text(el):
+    """
+    LinkedIn-safe text extractor.
+    Tries text → aria-label → title
+    """
+    if not el:
+        return ""
+    if el.text and el.text.strip():
+        return clean(el.text)
+    if el.get("aria-label"):
+        return clean(el.get("aria-label"))
+    if el.get("title"):
+        return clean(el.get("title"))
+    return ""
+
+
+def extract_minutes(text):
+    match = re.search(r"(\d+)\s+minute", text.lower())
     if match:
         return int(match.group(1))
     return None
 
 
-# ===== MAIN LOGIC =====
+# ========= MAIN =========
 for url in URLS:
     print("\nFetching:", url)
-    response = requests.get(url, headers=HEADERS, timeout=30)
-    soup = BeautifulSoup(response.text, "html.parser")
+    res = requests.get(url, headers=HEADERS, timeout=30)
+    soup = BeautifulSoup(res.text, "html.parser")
 
     jobs = soup.select("div.base-card")
     print("Jobs found:", len(jobs))
 
     for job in jobs:
-        title = job.select_one("h3")
-        company = job.select_one("h4")
-        location = job.select_one(".job-search-card__location")
-        time_tag = job.select_one("time")
-        link = job.select_one("a")
+        title_el = job.select_one("h3")
+        company_el = job.select_one("h4")
+        location_el = job.select_one(".job-search-card__location")
+        time_el = job.select_one("time")
+        link_el = job.select_one("a")
 
-        if not title or not company or not link or not time_tag:
+        title = get_text(title_el)
+        company = get_text(company_el)
+        location = get_text(location_el) or "India"
+
+        if not title or not company or not link_el or not time_el:
             continue
 
-        posted_text = time_tag.text.strip()
-        minutes = extract_minutes(posted_text)
-
-        # ONLY jobs posted in last 10 minutes
+        minutes = extract_minutes(time_el.text.strip())
         if minutes is None or minutes > 10:
             continue
 
-        job_link = link["href"].split("?")[0].strip()
+        job_link = link_el["href"].split("?")[0].strip()
 
         message = (
-            f"📋 Role: {clean_text(title.text)}\n\n"
-            f"🏢 Company: {clean_text(company.text)}\n"
-            f"📍 Location: {clean_text(location.text if location else 'India')}\n\n"
+            f"📋 Role: {title}\n\n"
+            f"🏢 Company: {company}\n"
+            f"📍 Location: {location}\n\n"
             f"⏰ Posted: {minutes} minutes ago\n"
             f"📝 Application: Standard Apply\n\n"
             f"🔗 Apply: {job_link}\n\n"
@@ -88,5 +99,5 @@ for url in URLS:
             f"🔗 LinkedIn: https://www.linkedin.com/in/shubham-ingole"
         )
 
-        print("Sending:", clean_text(title.text))
+        print("Sending:", title)
         send_telegram(message)
