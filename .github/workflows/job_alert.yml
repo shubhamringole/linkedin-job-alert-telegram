@@ -2,7 +2,7 @@ name: LinkedIn Job Alert
 
 on:
   schedule:
-    - cron: "0 */3 * * *"   # runs every 3 hours
+    - cron: "*/5 * * * *"   # runs every 5 min
   workflow_dispatch:
 
 jobs:
