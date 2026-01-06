@@ -1,8 +1,12 @@
 name: LinkedIn Job Alert
 
+concurrency:
+  group: linkedin-job-alert
+  cancel-in-progress: true
+
 on:
   schedule:
-    - cron: "*/5 * * * *"   # runs every 5 min
+    - cron: "*/7 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -24,4 +28,3 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-
