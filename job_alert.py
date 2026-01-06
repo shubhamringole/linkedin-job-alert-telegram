@@ -17,12 +17,15 @@ HEADERS = {
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    r = requests.post(url, json={
-        "chat_id": CHAT_ID,
-        "text": msg,
+    payload = {
+        "chat_id": str(CHAT_ID),   # force string
+        "text": msg[:3900],        # Telegram limit safety
         "disable_web_page_preview": True
-    })
-    print("Telegram response:", r.status_code)
+    }
+
+    r = requests.post(url, json=payload)
+    print("Telegram response:", r.status_code, r.text)
+
 
 for url in URLS:
     print("\nFetching:", url)
