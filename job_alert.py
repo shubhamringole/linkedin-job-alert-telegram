@@ -21,11 +21,12 @@ def send_telegram(msg):
     payload = {
         "chat_id": str(CHAT_ID),
         "text": msg[:3900],
-        "disable_web_page_preview": True,
-        "parse_mode": None   # 🚫 Disable Markdown completely
+        "disable_web_page_preview": True
+        # 🚫 NO parse_mode key at all
     }
     r = requests.post(url, json=payload)
-    print("Telegram:", r.status_code)
+    print("Telegram:", r.status_code, r.text)
+
 
 
 def extract_minutes(text):
@@ -60,7 +61,7 @@ for url in URLS:
         if minutes is None or minutes > 10:
             continue
 
-        job_link = link["href"].split("?")[0]
+        job_link = link["href"].split("?")[0].strip()
 
         message = (
             f"📋 Role: {title.text.strip()}\n\n"
