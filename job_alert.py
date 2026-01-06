@@ -3,9 +3,11 @@ from bs4 import BeautifulSoup
 import os
 import re
 
+# ===== ENV VARIABLES =====
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
+# ===== LINKEDIN SEARCH (LAST 10 MINUTES) =====
 URLS = [
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r600",
     "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r600"
@@ -16,26 +18,38 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9"
 }
 
-def send_telegram(msg):
+# ===== HELPERS =====
+def send_telegram(message: str):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": str(CHAT_ID),
-        "text": msg[:3900],
+        "text": message[:3900],  # Telegram safety limit
         "disable_web_page_preview": True
-        # 🚫 NO parse_mode key at all
     }
-    r = requests.post(url, json=payload)
-    print("Telegram:", r.status_code, r.text)
+    response = requests.post(url, json=payload)
+    print("Telegram:", response.status_code)
 
 
+def clean_text(text: str) -> str:
+    """Remove asterisks and extra whitespace"""
+    if not text:
+        return ""
+    return (
+        text.replace("*", "")
+            .replace("\n", " ")
+            .strip()
+    )
 
-def extract_minutes(text):
+
+def extract_minutes(posted_text: str):
     """Extract minutes from 'X minutes ago'"""
-    match = re.search(r"(\d+)\s+minute", text)
+    match = re.search(r"(\d+)\s+minute", posted_text.lower())
     if match:
         return int(match.group(1))
     return None
 
+
+# ===== MAIN LOGIC =====
 for url in URLS:
     print("\nFetching:", url)
     response = requests.get(url, headers=HEADERS, timeout=30)
@@ -54,19 +68,19 @@ for url in URLS:
         if not title or not company or not link or not time_tag:
             continue
 
-        posted_text = time_tag.text.strip().lower()
+        posted_text = time_tag.text.strip()
         minutes = extract_minutes(posted_text)
 
-        # ONLY last 10 minutes
+        # ONLY jobs posted in last 10 minutes
         if minutes is None or minutes > 10:
             continue
 
         job_link = link["href"].split("?")[0].strip()
 
         message = (
-            f"📋 Role: {title.text.strip()}\n\n"
-            f"🏢 Company: {company.text.strip()}\n"
-            f"📍 Location: {location.text.strip() if location else 'India'}\n\n"
+            f"📋 Role: {clean_text(title.text)}\n\n"
+            f"🏢 Company: {clean_text(company.text)}\n"
+            f"📍 Location: {clean_text(location.text if location else 'India')}\n\n"
             f"⏰ Posted: {minutes} minutes ago\n"
             f"📝 Application: Standard Apply\n\n"
             f"🔗 Apply: {job_link}\n\n"
@@ -74,6 +88,5 @@ for url in URLS:
             f"🔗 LinkedIn: https://www.linkedin.com/in/shubham-ingole"
         )
 
-
-        print("Sending:", title.text.strip())
+        print("Sending:", clean_text(title.text))
         send_telegram(message)
