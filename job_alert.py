@@ -28,6 +28,17 @@ def send_telegram(message: str):
     }
     r = requests.post(url, json=payload)
     print("Telegram:", r.status_code)
+    
+def get_apply_type(job_card):
+    """
+    Detect Easy Apply vs Standard Apply
+    """
+    easy_apply = job_card.select_one(
+        "span.job-search-card__easy-apply-label"
+    )
+    if easy_apply:
+        return "Easy Apply"
+    return "Standard Apply"
 
 
 def clean(text):
@@ -74,6 +85,7 @@ for url in URLS:
         location_el = job.select_one(".job-search-card__location")
         time_el = job.select_one("time")
         link_el = job.select_one("a")
+        apply_type = get_apply_type(job)
 
         title = get_text(title_el)
         company = get_text(company_el)
@@ -93,7 +105,7 @@ for url in URLS:
             f"🏢 Company: {company}\n"
             f"📍 Location: {location}\n\n"
             f"⏰ Posted: {minutes} minutes ago\n"
-            f"📝 Application: Standard Apply\n\n"
+            f"📝 Application: {apply_type}\n\n"
             f"🔗 Apply: {job_link}\n\n"
             f"— Shubham Ingole\n"
             f"🔗 LinkedIn: https://www.linkedin.com/in/shubham-ingole"
