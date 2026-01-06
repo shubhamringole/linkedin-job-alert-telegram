@@ -21,10 +21,12 @@ def send_telegram(msg):
     payload = {
         "chat_id": str(CHAT_ID),
         "text": msg[:3900],
-        "disable_web_page_preview": True
+        "disable_web_page_preview": True,
+        "parse_mode": None   # 🚫 Disable Markdown completely
     }
     r = requests.post(url, json=payload)
     print("Telegram:", r.status_code)
+
 
 def extract_minutes(text):
     """Extract minutes from 'X minutes ago'"""
@@ -66,10 +68,11 @@ for url in URLS:
             f"📍 Location: {location.text.strip() if location else 'India'}\n\n"
             f"⏰ Posted: {minutes} minutes ago\n"
             f"📝 Application: Standard Apply\n\n"
-            f"🔗 Apply: {job_link}"
-            f"— Shubham Ingole"
+            f"🔗 Apply: {job_link}\n\n"
+            f"— Shubham Ingole\n"
             f"🔗 LinkedIn: https://www.linkedin.com/in/shubham-ingole"
         )
+
 
         print("Sending:", title.text.strip())
         send_telegram(message)
