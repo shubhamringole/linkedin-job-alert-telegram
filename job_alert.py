@@ -3,8 +3,9 @@ from bs4 import BeautifulSoup
 import os
 import hashlib
 
-BOT_TOKEN = os.environ["8449183300:AAECtDfPgKPRVtW9ABSW3yFltmCA6eV22Z0"]
-CHAT_ID = os.environ["4811275809"]
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+CHAT_ID = os.environ["CHAT_ID"]
+
 
 URLS = [
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r86400",
