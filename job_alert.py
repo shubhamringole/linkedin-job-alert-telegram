@@ -67,6 +67,8 @@ for url in URLS:
             f"⏰ Posted: {minutes} minutes ago\n"
             f"📝 Application: Standard Apply\n\n"
             f"🔗 Apply: {job_link}"
+            f"— Shubham Ingole"
+            f"🔗 LinkedIn: https://www.linkedin.com/in/shubham-ingole"
         )
 
         print("Sending:", title.text.strip())
