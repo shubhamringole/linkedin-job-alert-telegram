@@ -2,15 +2,19 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import re
+import time
 
 # ========= ENV =========
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
 # ========= CONFIG =========
-MAX_MINUTES = 30  # must match cron frequency (every 30 minutes)
+MAX_MINUTES = 30
+MAX_JOBS_PER_URL = 5      # 🔴 LIMIT aggressively
+JOB_DELAY = 2             # seconds between jobs
+URL_DELAY = 5             # seconds between URLs
 
-# ========= SEARCH (LAST 30 MINUTES) =========
+# ========= SEARCH =========
 URLS = [
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r1800",
     "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r1800"
@@ -45,7 +49,8 @@ for url in URLS:
     res = requests.get(url, headers=HEADERS, timeout=30)
     soup = BeautifulSoup(res.text, "html.parser")
 
-    jobs = soup.select("div.base-card")
+    # 🔴 Only take first N jobs
+    jobs = soup.select("div.base-card")[:MAX_JOBS_PER_URL]
 
     for job in jobs:
         title_el = job.select_one("h3")
@@ -81,3 +86,9 @@ for url in URLS:
         )
 
         send_telegram(message)
+
+        # 🕒 Slow down per job
+        time.sleep(JOB_DELAY)
+
+    # 🕒 Slow down per URL
+    time.sleep(URL_DELAY)
