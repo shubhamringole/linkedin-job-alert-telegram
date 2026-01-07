@@ -146,7 +146,7 @@ for url in URLS:
             f"📝 Application: {apply_type}\n\n"
             f"🔗 Apply: {job_link}\n\n"
             f"— Shubham Ingole\n"
-            f"🔗 LinkedIn: https://www.linkedin.com/in/shubham-ingole"
+            f"🔗 LinkedIn: https://www.linkedin.com/in/shubhamingole/"
         )
 
         print("Sending:", title, "|", apply_type)
