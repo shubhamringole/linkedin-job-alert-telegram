@@ -10,7 +10,7 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 # ========= CONFIG =========
 MAX_MINUTES = 30
-MAX_JOBS_PER_URL = 5      # 🔴 LIMIT aggressively
+MAX_JOBS_PER_URL = 3      # 🔴 LIMIT aggressively
 JOB_DELAY = 2             # seconds between jobs
 URL_DELAY = 5             # seconds between URLs
 
