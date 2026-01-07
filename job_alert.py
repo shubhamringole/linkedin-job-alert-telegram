@@ -2,16 +2,18 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import re
-from datetime import datetime
 
 # ========= ENV =========
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
-# ========= SEARCH (LAST 10 MINUTES) =========
+# ========= CONFIG =========
+MAX_MINUTES = 30  # must match cron frequency (every 30 minutes)
+
+# ========= SEARCH (LAST 30 MINUTES) =========
 URLS = [
-    "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r600",
-    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r600"
+    "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r1800",
+    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r1800"
 ]
 
 HEADERS = {
@@ -31,88 +33,19 @@ def send_telegram(message: str):
         "text": message[:3900],
         "disable_web_page_preview": True
     }
-    r = requests.post(url, json=payload, timeout=20)
-    print("Telegram:", r.status_code)
-
+    requests.post(url, json=payload, timeout=20)
 
 # ========= HELPERS =========
-def clean(text):
-    if not text:
-        return ""
-    return (
-        text.replace("*", "")
-        .replace("\n", " ")
-        .replace("\u2022", "")
-        .strip()
-    )
-
-
-def get_text(el):
-    """
-    LinkedIn-safe text extractor
-    """
-    if not el:
-        return ""
-    if el.text and el.text.strip():
-        return clean(el.text)
-    if el.get("aria-label"):
-        return clean(el.get("aria-label"))
-    if el.get("title"):
-        return clean(el.get("title"))
-    return ""
-
-
 def extract_minutes(text):
-    """
-    Extract minutes from:
-    '5 minutes ago', '10 minute ago'
-    """
     match = re.search(r"(\d+)\s+minute", text.lower())
-    if match:
-        return int(match.group(1))
-    return None
-
-
-# ========= APPLY TYPE DETECTION (FIXED) =========
-def get_apply_type(job_card):
-    """
-    Robust Easy Apply detection for LinkedIn public jobs page
-    """
-
-    # 1️⃣ Direct Easy Apply label (rare but exists)
-    if job_card.select_one("span.job-search-card__easy-apply-label"):
-        return "Easy Apply"
-
-    # 2️⃣ Search text content
-    text_blob = " ".join(job_card.stripped_strings).lower()
-
-    easy_keywords = [
-        "easy apply",
-        "easily apply",
-        "quick apply"
-    ]
-
-    if any(k in text_blob for k in easy_keywords):
-        return "Easy Apply"
-
-    # 3️⃣ aria-label / title fallback
-    for tag in job_card.find_all(["a", "button"]):
-        aria = (tag.get("aria-label") or "").lower()
-        title = (tag.get("title") or "").lower()
-        if "easy apply" in aria or "easy apply" in title:
-            return "Easy Apply"
-
-    return "Standard Apply"
-
+    return int(match.group(1)) if match else None
 
 # ========= MAIN =========
 for url in URLS:
-    print("\nFetching:", url)
     res = requests.get(url, headers=HEADERS, timeout=30)
     soup = BeautifulSoup(res.text, "html.parser")
 
     jobs = soup.select("div.base-card")
-    print("Jobs found:", len(jobs))
 
     for job in jobs:
         title_el = job.select_one("h3")
@@ -121,33 +54,30 @@ for url in URLS:
         time_el = job.select_one("time")
         link_el = job.select_one("a")
 
-        title = get_text(title_el)
-        company = get_text(company_el)
-        location = get_text(location_el) or "India"
-
-        if not title or not company or not link_el or not time_el:
+        if not title_el or not company_el or not time_el or not link_el:
             continue
 
         minutes = extract_minutes(time_el.text.strip())
-        if minutes is None or minutes > 10:
+        if minutes is None or minutes > MAX_MINUTES:
             continue
 
-        job_link = link_el.get("href", "").split("?")[0].strip()
+        job_link = link_el.get("href", "").split("?")[0]
         if not job_link.startswith("http"):
             job_link = "https://www.linkedin.com" + job_link
 
-        apply_type = get_apply_type(job)
+        title = title_el.text.strip()
+        company = company_el.text.strip()
+        location = location_el.text.strip() if location_el else "India"
 
         message = (
             f"📋 Role: {title}\n\n"
             f"🏢 Company: {company}\n"
             f"📍 Location: {location}\n\n"
             f"⏰ Posted: {minutes} minutes ago\n"
-            f"📝 Application: {apply_type}\n\n"
+            f"📝 Application: Check on LinkedIn\n\n"
             f"🔗 Apply: {job_link}\n\n"
             f"— Shubham Ingole\n"
             f"🔗 LinkedIn: https://www.linkedin.com/in/shubhamingole/"
         )
 
-        print("Sending:", title, "|", apply_type)
         send_telegram(message)
