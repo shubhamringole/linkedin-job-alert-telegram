@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import re
+from datetime import datetime
 
 # ========= ENV =========
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -14,11 +15,15 @@ URLS = [
 ]
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
     "Accept-Language": "en-US,en;q=0.9"
 }
 
-# ========= HELPERS =========
+# ========= TELEGRAM =========
 def send_telegram(message: str):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
@@ -26,31 +31,25 @@ def send_telegram(message: str):
         "text": message[:3900],
         "disable_web_page_preview": True
     }
-    r = requests.post(url, json=payload)
+    r = requests.post(url, json=payload, timeout=20)
     print("Telegram:", r.status_code)
-    
-def get_apply_type(job_card):
-    """
-    Detect Easy Apply vs Standard Apply
-    """
-    easy_apply = job_card.select_one(
-        "span.job-search-card__easy-apply-label"
-    )
-    if easy_apply:
-        return "Easy Apply"
-    return "Standard Apply"
 
 
+# ========= HELPERS =========
 def clean(text):
     if not text:
         return ""
-    return text.replace("*", "").replace("\n", " ").strip()
+    return (
+        text.replace("*", "")
+        .replace("\n", " ")
+        .replace("\u2022", "")
+        .strip()
+    )
 
 
 def get_text(el):
     """
-    LinkedIn-safe text extractor.
-    Tries text → aria-label → title
+    LinkedIn-safe text extractor
     """
     if not el:
         return ""
@@ -64,10 +63,46 @@ def get_text(el):
 
 
 def extract_minutes(text):
+    """
+    Extract minutes from:
+    '5 minutes ago', '10 minute ago'
+    """
     match = re.search(r"(\d+)\s+minute", text.lower())
     if match:
         return int(match.group(1))
     return None
+
+
+# ========= APPLY TYPE DETECTION (FIXED) =========
+def get_apply_type(job_card):
+    """
+    Robust Easy Apply detection for LinkedIn public jobs page
+    """
+
+    # 1️⃣ Direct Easy Apply label (rare but exists)
+    if job_card.select_one("span.job-search-card__easy-apply-label"):
+        return "Easy Apply"
+
+    # 2️⃣ Search text content
+    text_blob = " ".join(job_card.stripped_strings).lower()
+
+    easy_keywords = [
+        "easy apply",
+        "easily apply",
+        "quick apply"
+    ]
+
+    if any(k in text_blob for k in easy_keywords):
+        return "Easy Apply"
+
+    # 3️⃣ aria-label / title fallback
+    for tag in job_card.find_all(["a", "button"]):
+        aria = (tag.get("aria-label") or "").lower()
+        title = (tag.get("title") or "").lower()
+        if "easy apply" in aria or "easy apply" in title:
+            return "Easy Apply"
+
+    return "Standard Apply"
 
 
 # ========= MAIN =========
@@ -85,7 +120,6 @@ for url in URLS:
         location_el = job.select_one(".job-search-card__location")
         time_el = job.select_one("time")
         link_el = job.select_one("a")
-        apply_type = get_apply_type(job)
 
         title = get_text(title_el)
         company = get_text(company_el)
@@ -98,7 +132,11 @@ for url in URLS:
         if minutes is None or minutes > 10:
             continue
 
-        job_link = link_el["href"].split("?")[0].strip()
+        job_link = link_el.get("href", "").split("?")[0].strip()
+        if not job_link.startswith("http"):
+            job_link = "https://www.linkedin.com" + job_link
+
+        apply_type = get_apply_type(job)
 
         message = (
             f"📋 Role: {title}\n\n"
@@ -111,5 +149,5 @@ for url in URLS:
             f"🔗 LinkedIn: https://www.linkedin.com/in/shubham-ingole"
         )
 
-        print("Sending:", title)
+        print("Sending:", title, "|", apply_type)
         send_telegram(message)
