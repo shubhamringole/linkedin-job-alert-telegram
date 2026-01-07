@@ -1,33 +1,24 @@
-import requests
-from bs4 import BeautifulSoup
 import os
 import re
 import time
+import requests
+from playwright.sync_api import sync_playwright
 
 # ========= ENV =========
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
-# ========= SEARCH =========
-URLS = [
+# ========= SEARCH URLS =========
+SEARCH_URLS = [
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r600",
     "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r600"
 ]
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9"
-}
 
 # ========= TELEGRAM =========
 def send_telegram(message: str):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": str(CHAT_ID),
+        "chat_id": CHAT_ID,
         "text": message[:3900],
         "disable_web_page_preview": True
     }
@@ -36,67 +27,77 @@ def send_telegram(message: str):
 
 # ========= HELPERS =========
 def extract_minutes(text):
-    m = re.search(r"(\d+)\s+minute", text.lower())
-    return int(m.group(1)) if m else None
+    match = re.search(r"(\d+)\s+minute", text.lower())
+    return int(match.group(1)) if match else None
 
 
-def is_easy_apply(job_url):
+def is_easy_apply(page):
     """
-    REAL Easy Apply detection – opens job page
+    REAL Easy Apply detection (DOM-level)
     """
-    try:
-        res = requests.get(job_url, headers=HEADERS, timeout=20)
-        soup = BeautifulSoup(res.text, "html.parser")
-
-        for span in soup.select("span.artdeco-button__text"):
-            if "easy apply" in span.get_text(strip=True).lower():
-                return True
-
-        return False
-    except:
-        return False
+    buttons = page.locator("span.artdeco-button__text")
+    for i in range(buttons.count()):
+        if "easy apply" in buttons.nth(i).inner_text().lower():
+            return True
+    return False
 
 
 # ========= MAIN =========
-for url in URLS:
-    print("\nFetching:", url)
-    res = requests.get(url, headers=HEADERS, timeout=30)
-    soup = BeautifulSoup(res.text, "html.parser")
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    context = browser.new_context()
+    page = context.new_page()
 
-    jobs = soup.select("div.base-card")
-    print("Jobs found:", len(jobs))
+    for search_url in SEARCH_URLS:
+        print("\nFetching search:", search_url)
+        page.goto(search_url, timeout=60000)
+        page.wait_for_timeout(5000)
 
-    for job in jobs:
-        title = job.select_one("h3")
-        company = job.select_one("h4")
-        time_el = job.select_one("time")
-        link_el = job.select_one("a")
+        jobs = page.locator("div.base-card")
+        job_count = jobs.count()
+        print("Jobs found:", job_count)
 
-        if not title or not company or not time_el or not link_el:
-            continue
+        for i in range(job_count):
+            job = jobs.nth(i)
 
-        minutes = extract_minutes(time_el.text.strip())
-        if minutes is None or minutes > 10:
-            continue
+            try:
+                title = job.locator("h3").inner_text().strip()
+                company = job.locator("h4").inner_text().strip()
+                time_text = job.locator("time").inner_text().strip()
+                link = job.locator("a").get_attribute("href")
 
-        job_link = link_el["href"].split("?")[0]
-        if not job_link.startswith("http"):
-            job_link = "https://www.linkedin.com" + job_link
+                minutes = extract_minutes(time_text)
+                if minutes is None or minutes > 10:
+                    continue
 
-        # ⚠️ CRITICAL FIX HERE
-        apply_type = "Easy Apply" if is_easy_apply(job_link) else "Standard Apply"
+                if not link.startswith("http"):
+                    link = "https://www.linkedin.com" + link.split("?")[0]
 
-        message = (
-            f"📋 Role: {title.text.strip()}\n\n"
-            f"🏢 Company: {company.text.strip()}\n\n"
-            f"⏰ Posted: {minutes} minutes ago\n"
-            f"📝 Application: {apply_type}\n\n"
-            f"🔗 Apply: {job_link}\n\n"
-            f"— Shubham Ingole\n"
-            f"🔗 LinkedIn: https://www.linkedin.com/in/shubhamingole/"
-        )
+                # 🔥 OPEN JOB DETAIL PAGE
+                job_page = context.new_page()
+                job_page.goto(link, timeout=60000)
+                job_page.wait_for_timeout(5000)
 
-        print("Sending:", title.text.strip(), "|", apply_type)
-        send_telegram(message)
+                apply_type = "Easy Apply" if is_easy_apply(job_page) else "Standard Apply"
 
-        time.sleep(1.5)  # anti-block
+                message = (
+                    f"📋 Role: {title}\n\n"
+                    f"🏢 Company: {company}\n\n"
+                    f"⏰ Posted: {minutes} minutes ago\n"
+                    f"📝 Application: {apply_type}\n\n"
+                    f"🔗 Apply: {link}\n\n"
+                    f"— Shubham Ingole\n"
+                    f"🔗 LinkedIn: https://www.linkedin.com/in/shubhamingole/"
+                )
+
+                print("Sending:", title, "|", apply_type)
+                send_telegram(message)
+
+                job_page.close()
+                time.sleep(2)  # anti-block
+
+            except Exception as e:
+                print("Skipped job due to error:", e)
+                continue
+
+    browser.close()
