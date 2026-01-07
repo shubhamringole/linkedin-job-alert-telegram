@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import re
-from datetime import datetime
 
 # ========= ENV =========
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -48,9 +47,6 @@ def clean(text):
 
 
 def get_text(el):
-    """
-    LinkedIn-safe text extractor
-    """
     if not el:
         return ""
     if el.text and el.text.strip():
@@ -63,36 +59,25 @@ def get_text(el):
 
 
 def extract_minutes(text):
-    """
-    Extract minutes from:
-    '5 minutes ago', '10 minute ago'
-    """
     match = re.search(r"(\d+)\s+minute", text.lower())
     if match:
         return int(match.group(1))
     return None
 
 
-# ========= APPLY TYPE DETECTION (FIXED) =========
+# ========= APPLY TYPE DETECTION =========
 def get_apply_type(job_card):
     """
-    Robust Easy Apply detection for LinkedIn public jobs page
+    Accurate Easy Apply detection for LinkedIn public jobs page
     """
 
-    # 1️⃣ Direct Easy Apply label (rare but exists)
+    # 1️⃣ Easy Apply button text (PRIMARY)
+    for span in job_card.select("span.artdeco-button__text"):
+        if "easy apply" in span.get_text(strip=True).lower():
+            return "Easy Apply"
+
+    # 2️⃣ Legacy Easy Apply label
     if job_card.select_one("span.job-search-card__easy-apply-label"):
-        return "Easy Apply"
-
-    # 2️⃣ Search text content
-    text_blob = " ".join(job_card.stripped_strings).lower()
-
-    easy_keywords = [
-        "easy apply",
-        "easily apply",
-        "quick apply"
-    ]
-
-    if any(k in text_blob for k in easy_keywords):
         return "Easy Apply"
 
     # 3️⃣ aria-label / title fallback
