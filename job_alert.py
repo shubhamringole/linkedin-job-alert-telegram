@@ -15,10 +15,9 @@ JOB_DELAY = 2             # seconds between jobs
 URL_DELAY = 5             # seconds between URLs
 
 # ========= SEARCH =========
-URLS = [
+URLS = ["https://www.linkedin.com/jobs/search/?keywords=data%20engineer&location=India&f_TPR=r1800",
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r1800",
-    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r1800",
-    "https://www.linkedin.com/jobs/search/?keywords=data%20engineer&location=India&f_TPR=r1800"
+    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r1800"
 ]
 
 HEADERS = {
