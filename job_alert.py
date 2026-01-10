@@ -16,6 +16,7 @@ URL_DELAY = 5             # seconds between URLs
 
 # ========= SEARCH =========
 URLS = [
+    "https://www.linkedin.com/jobs/search/?keywords=data%20engineer&location=India&f_TPR=r1800",
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r1800",
     "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r1800"
 ]
