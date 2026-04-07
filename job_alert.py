@@ -9,21 +9,18 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
 # ========= CONFIG =========
-MAX_MINUTES = 30
-MAX_JOBS_PER_URL = 4      # 🔴 LIMIT aggressively
-JOB_DELAY = 2             # seconds between jobs
-URL_DELAY = 5             # seconds between URLs
+MAX_MINUTES = 60          # 1 hour window (realistic)
+MAX_JOBS_PER_URL = 10     # increase safely
+JOB_DELAY = 3             # seconds between jobs
+URL_DELAY = 8             # seconds between URLs
 
-# ========= SEARCH =========
-URLS = [
-    # Data roles
-    "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs/search/?keywords=data%20scientist&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs/search/?keywords=data%20engineer&location=India&f_TPR=r86400",
-
-    # Business roles
-    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs/search/?keywords=product%20analyst&location=India&f_TPR=r86400",
+# ========= SEARCH (GUEST API) =========
+BASE_URLS = [
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=data%20analyst&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=data%20scientist&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=data%20engineer&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=business%20analyst&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=product%20analyst&location=India&f_TPR=r86400",
 ]
 
 HEADERS = {
@@ -47,54 +44,80 @@ def send_telegram(message: str):
 
 # ========= HELPERS =========
 def extract_minutes(text):
-    match = re.search(r"(\d+)\s+minute", text.lower())
-    return int(match.group(1)) if match else None
+    text = text.lower()
+
+    if "just now" in text:
+        return 0
+
+    if "hour" in text:
+        match = re.search(r"(\d+)\s+hour", text)
+        return int(match.group(1)) * 60 if match else 60
+
+    if "minute" in text:
+        match = re.search(r"(\d+)\s+minute", text)
+        return int(match.group(1)) if match else None
+
+    return None
 
 # ========= MAIN =========
-for url in URLS:
-    res = requests.get(url, headers=HEADERS, timeout=30)
-    soup = BeautifulSoup(res.text, "html.parser")
+for base_url in BASE_URLS:
 
-    # 🔴 Only take first N jobs
-    jobs = soup.select("div.base-card")[:MAX_JOBS_PER_URL]
+    # Pagination (0,25,50,75)
+    for start in range(0, 100, 25):
+        url = f"{base_url}&start={start}"
 
-    for job in jobs:
-        title_el = job.select_one("h3")
-        company_el = job.select_one("h4")
-        location_el = job.select_one(".job-search-card__location")
-        time_el = job.select_one("time")
-        link_el = job.select_one("a")
-
-        if not title_el or not company_el or not time_el or not link_el:
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=30)
+        except Exception as e:
+            print("Request failed:", e)
             continue
 
-        minutes = extract_minutes(time_el.text.strip())
-        if minutes is None or minutes > MAX_MINUTES:
-            continue
+        soup = BeautifulSoup(res.text, "html.parser")
 
-        job_link = link_el.get("href", "").split("?")[0]
-        if not job_link.startswith("http"):
-            job_link = "https://www.linkedin.com" + job_link
+        jobs = soup.select("li")[:MAX_JOBS_PER_URL]
 
-        title = title_el.text.strip()
-        company = company_el.text.strip()
-        location = location_el.text.strip() if location_el else "India"
+        for job in jobs:
+            try:
+                title_el = job.select_one("h3")
+                company_el = job.select_one("h4")
+                location_el = job.select_one(".job-search-card__location")
+                time_el = job.select_one("time")
+                link_el = job.select_one("a")
 
-        message = (
-            f"📋 Role: {title}\n\n"
-            f"🏢 Company: {company}\n"
-            f"📍 Location: {location}\n\n"
-            f"⏰ Posted: {minutes} minutes ago\n"
-            f"📝 Application: Check on LinkedIn\n\n"
-            f"🔗 Apply: {job_link}\n\n"
-            f"— Shubham Ingole\n"
-            f"🔗 LinkedIn: https://www.linkedin.com/in/shubhamingole/"
-        )
+                if not title_el or not company_el or not time_el or not link_el:
+                    continue
 
-        send_telegram(message)
+                time_text = time_el.text.strip()
+                minutes = extract_minutes(time_text)
 
-        # 🕒 Slow down per job
-        time.sleep(JOB_DELAY)
+                if minutes is None or minutes > MAX_MINUTES:
+                    continue
 
-    # 🕒 Slow down per URL
-    time.sleep(URL_DELAY)
+                job_link = link_el.get("href", "").split("?")[0]
+                if not job_link.startswith("http"):
+                    job_link = "https://www.linkedin.com" + job_link
+
+                title = title_el.text.strip()
+                company = company_el.text.strip()
+                location = location_el.text.strip() if location_el else "India"
+
+                message = (
+                    f"📋 Role: {title}\n\n"
+                    f"🏢 Company: {company}\n"
+                    f"📍 Location: {location}\n\n"
+                    f"⏰ Posted: {time_text}\n"
+                    f"📝 Application: Check on LinkedIn\n\n"
+                    f"🔗 Apply: {job_link}\n\n"
+                    f"— Shubham Ingole\n"
+                    f"🔗 LinkedIn: https://www.linkedin.com/in/shubhamingole/"
+                )
+
+                send_telegram(message)
+
+                time.sleep(JOB_DELAY)
+
+            except Exception as e:
+                print("Job parse error:", e)
+                continue
+
+        time.sleep(URL_DELAY)
