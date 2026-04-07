@@ -16,8 +16,14 @@ URL_DELAY = 5             # seconds between URLs
 
 # ========= SEARCH =========
 URLS = [
+    # Data roles
     "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r86400"
+    "https://www.linkedin.com/jobs/search/?keywords=data%20scientist&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs/search/?keywords=data%20engineer&location=India&f_TPR=r86400",
+
+    # Business roles
+    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs/search/?keywords=product%20analyst&location=India&f_TPR=r86400",
 ]
 
 HEADERS = {
