@@ -10,14 +10,14 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 # ========= CONFIG =========
 MAX_MINUTES = 30
-MAX_JOBS_PER_URL = 3      # 🔴 LIMIT aggressively
+MAX_JOBS_PER_URL = 4      # 🔴 LIMIT aggressively
 JOB_DELAY = 2             # seconds between jobs
 URL_DELAY = 5             # seconds between URLs
 
 # ========= SEARCH =========
 URLS = [
-    "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=Pune%2C%20Maharashtra%2C%20India&f_TPR=r1800",
-    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=Pune%2C%20Maharashtra%2C%20India&f_TPR=r1800"
+    "https://www.linkedin.com/jobs/search/?keywords=data%20analyst&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs/search/?keywords=business%20analyst&location=India&f_TPR=r86400"
 ]
 
 HEADERS = {
