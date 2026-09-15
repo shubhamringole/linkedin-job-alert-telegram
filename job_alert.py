@@ -16,11 +16,21 @@ URL_DELAY = 8             # seconds between URLs
 
 # ========= SEARCH (GUEST API) =========
 BASE_URLS = [
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=data%20analyst&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=data%20scientist&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=data%20engineer&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=business%20analyst&location=India&f_TPR=r86400",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=product%20analyst&location=India&f_TPR=r86400",
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=GCP%20Data%20Engineer&location=India&f_TPR=r86400",
+
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Google%20Cloud%20Data%20Engineer&location=India&f_TPR=r86400",
+
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Data%20Engineer%20GCP&location=India&f_TPR=r86400",
+
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=GCP%20BigQuery%20Data%20Engineer&location=India&f_TPR=r86400",
+
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=GCP%20Data%20Engineering&location=India&f_TPR=r86400",
+
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Data%20Engineer%20BigQuery&location=India&f_TPR=r86400",
+
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Data%20Engineer%20Dataflow&location=India&f_TPR=r86400",
+
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=GCP%20Python%20Data%20Engineer&location=India&f_TPR=r86400",
 ]
 
 HEADERS = {
